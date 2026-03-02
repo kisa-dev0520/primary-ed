@@ -53,11 +53,9 @@ export default function QuizMenu({ db, onSelect }) {
         const module = await item.loader();
         const quizData = module.default;
         
-        // 정답 어휘만 추출
         const targetWords = quizData.map(q => q.options[q.correct]);
         const extractedDesc = targetWords.length > 0 ? targetWords.join(", ") : "등록된 어휘가 없습니다.";
 
-        // 로컬스토리지 점수 로드
         const saved1 = JSON.parse(localStorage.getItem(`quiz_progress_${item.id}_step1`)) || JSON.parse(localStorage.getItem(`quiz_progress_${item.id}`)) || null;
         const saved2 = JSON.parse(localStorage.getItem(`quiz_progress_${item.id}_step2`)) || null;
 
@@ -68,11 +66,17 @@ export default function QuizMenu({ db, onSelect }) {
         
         const lastSolvedDate = date1 > date2 ? saved1?.date : (saved2?.date || "");
 
+        // 🌟 날짜 포맷 정리 (옵션: 날짜가 너무 길게 나올 경우를 대비해 짧게 자르기 위함)
+        let formattedDate = lastSolvedDate;
+        if (typeof lastSolvedDate === "string" && lastSolvedDate.includes("T")) {
+          formattedDate = lastSolvedDate.split("T")[0];
+        }
+
         setDynamicInfo(prev => ({
           ...prev,
           [item.id]: {
             desc: extractedDesc,
-            date: lastSolvedDate,
+            date: formattedDate,
             score1: score1,
             score2: score2
           }
@@ -86,7 +90,6 @@ export default function QuizMenu({ db, onSelect }) {
     });
   }, [filteredList]); 
 
-  // ✨ 평균 점수에 따른 별 5개 환산 로직
   const getStarCount = (percentage) => {
     if (!percentage || percentage <= 0) return 0;
     return Math.round((percentage / 100) * 5);
@@ -118,7 +121,6 @@ export default function QuizMenu({ db, onSelect }) {
 
       <main style={{ maxWidth: "800px", margin: "0 auto", padding: "50px 20px 120px 20px", display: "flex", alignItems: "flex-start" }}>
         
-        {/* 🌟 수정 1: aside 너비를 140px에서 170px로 넉넉하게 확보 */}
         <aside style={{ width: "170px", minWidth: "170px", flexShrink: 0, paddingRight: "25px" }}>
           {subjects.map((sub, sIdx) => {
             const isSubjectActive = activeFilter.subject === sub;
@@ -128,8 +130,6 @@ export default function QuizMenu({ db, onSelect }) {
               <div key={sub}>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px", whiteSpace: "nowrap" }}>
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={subjectColor} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-                  
-                  {/* 🌟 수정 2: h3 태그에 단어 끊김(wordBreak) 및 줄바꿈 방지(whiteSpace) 강제 적용 */}
                   <h3 style={{ fontSize: "16px", fontWeight: "900", color: subjectColor, margin: "0", whiteSpace: "nowrap", wordBreak: "keep-all" }}>{sub} 어휘 퀴즈</h3>
                 </div>
 
@@ -167,7 +167,6 @@ export default function QuizMenu({ db, onSelect }) {
                 const isLastItem = index === filteredList.length - 1; 
                 const info = dynamicInfo[item.id] || { desc: "어휘 데이터 추출 중...", date: "", score1: null, score2: null };
                 
-                // ✨ 평균 점수 계산
                 let avgScore = 0;
                 if (info.score1 !== null && info.score2 !== null) {
                   avgScore = Math.round((info.score1 + info.score2) / 2);
@@ -183,26 +182,33 @@ export default function QuizMenu({ db, onSelect }) {
                   <div key={item.id} style={{ padding: "12px 0", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: isLastItem ? "none" : `1px solid ${THEME.borderLight}` }}>
                     
                     <div style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0, paddingRight: "16px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                        <span style={{ fontSize: "16px", fontWeight: "700", color: THEME.textBlack }}>{item.title}</span>
+                      
+                      {/* 🌟 수정: 타이틀과 날짜 영역 */}
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px", overflow: "hidden" }}>
+                        {/* 🌟 타이틀: whiteSpace="nowrap" 및 넘치면 ... 처리 */}
+                        <span style={{ fontSize: "16px", fontWeight: "700", color: THEME.textBlack, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {item.title}
+                        </span>
+                        
+                        {/* 🌟 날짜: whiteSpace="nowrap", flexShrink=0 으로 찌그러짐 원천 차단 */}
                         {info.date && (
-                          <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: "20px", padding: "0 6px", border: `1px solid ${THEME.primaryColor}`, borderRadius: "99px", color: THEME.primaryColor, fontSize: "10px", fontWeight: "500" }}>{info.date}</div>
+                          <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: "20px", padding: "0 6px", border: `1px solid ${THEME.primaryColor}`, borderRadius: "99px", color: THEME.primaryColor, fontSize: "10px", fontWeight: "500", whiteSpace: "nowrap", flexShrink: 0 }}>
+                            {info.date}
+                          </div>
                         )}
                       </div>
-                      <div style={{ color: THEME.textGrayLight, fontSize: "12px", fontWeight: "400", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>{info.desc}</div>
+
+                      <div style={{ color: THEME.textGrayLight, fontSize: "12px", fontWeight: "400", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%", marginTop: "4px" }}>{info.desc}</div>
                     </div>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: "16px", flexShrink: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
                       <div style={{ display: "flex", gap: "0px", alignItems: "center" }}>
-                        
-                        {/* 5개 별점 */}
                         {[1, 2, 3, 4, 5].map((starIndex) => (
                           <svg key={starIndex} width="13" height="13" viewBox="0 0 24 24" fill={starIndex <= starCount ? THEME.starFilled : THEME.starEmpty}><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>
                         ))}
                         
-                        {/* 점수 텍스트 */}
                         {info.date && (
-                          <span style={{ marginLeft: "8px", fontSize: "14px", fontWeight: "600", color: THEME.textBlack }}>
+                          <span style={{ marginLeft: "8px", fontSize: "14px", fontWeight: "600", color: THEME.textBlack, whiteSpace: "nowrap" }}>
                             {avgScore}점
                           </span>
                         )}
@@ -222,7 +228,8 @@ export default function QuizMenu({ db, onSelect }) {
                           transition: "all 0.2s", 
                           display: "flex", 
                           alignItems: "center", 
-                          justifyContent: "center" 
+                          justifyContent: "center",
+                          flexShrink: 0
                         }} 
                         className="go-btn"
                       >
