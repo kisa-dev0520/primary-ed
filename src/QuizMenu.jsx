@@ -66,7 +66,7 @@ export default function QuizMenu({ db, onSelect }) {
         
         const lastSolvedDate = date1 > date2 ? saved1?.date : (saved2?.date || "");
 
-        // 🌟 날짜 포맷 정리 (옵션: 날짜가 너무 길게 나올 경우를 대비해 짧게 자르기 위함)
+        // 날짜 포맷 정리 (YYYY-MM-DD 형식 등으로 짧게 유지)
         let formattedDate = lastSolvedDate;
         if (typeof lastSolvedDate === "string" && lastSolvedDate.includes("T")) {
           formattedDate = lastSolvedDate.split("T")[0];
@@ -179,18 +179,18 @@ export default function QuizMenu({ db, onSelect }) {
                 const starCount = getStarCount(avgScore);
 
                 return (
-                  <div key={item.id} style={{ padding: "12px 0", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: isLastItem ? "none" : `1px solid ${THEME.borderLight}` }}>
+                  <div key={item.id} style={{ padding: "12px 0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", borderBottom: isLastItem ? "none" : `1px solid ${THEME.borderLight}` }}>
                     
-                    <div style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0, paddingRight: "16px" }}>
+                    {/* 🌟 1. 텍스트 정보 영역 (minWidth: 0 이 핵심입니다) */}
+                    <div style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
                       
-                      {/* 🌟 수정: 타이틀과 날짜 영역 */}
-                      <div style={{ display: "flex", alignItems: "center", gap: "12px", overflow: "hidden" }}>
-                        {/* 🌟 타이틀: whiteSpace="nowrap" 및 넘치면 ... 처리 */}
-                        <span style={{ fontSize: "16px", fontWeight: "700", color: THEME.textBlack, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%" }}>
+                        {/* 🌟 타이틀: 영역 밖으로 벗어나지 못하게 flex: 1 과 minWidth: 0 부여 */}
+                        <span style={{ fontSize: "16px", fontWeight: "700", color: THEME.textBlack, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, minWidth: 0 }}>
                           {item.title}
                         </span>
                         
-                        {/* 🌟 날짜: whiteSpace="nowrap", flexShrink=0 으로 찌그러짐 원천 차단 */}
+                        {/* 🌟 날짜: 공간을 양보하지 않고 무조건 찌그러짐 방지 (flexShrink: 0) */}
                         {info.date && (
                           <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: "20px", padding: "0 6px", border: `1px solid ${THEME.primaryColor}`, borderRadius: "99px", color: THEME.primaryColor, fontSize: "10px", fontWeight: "500", whiteSpace: "nowrap", flexShrink: 0 }}>
                             {info.date}
@@ -198,17 +198,21 @@ export default function QuizMenu({ db, onSelect }) {
                         )}
                       </div>
 
-                      <div style={{ color: THEME.textGrayLight, fontSize: "12px", fontWeight: "400", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%", marginTop: "4px" }}>{info.desc}</div>
+                      {/* 🌟 어휘 요약 (desc) 도 영역 밖으로 넘치면 ... 으로 자름 */}
+                      <div style={{ color: THEME.textGrayLight, fontSize: "12px", fontWeight: "400", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%", marginTop: "4px" }}>
+                        {info.desc}
+                      </div>
                     </div>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
+                    {/* 🌟 2. 오른쪽 점수 및 버튼 영역 (절대 찌그러지지 않도록 묶음) */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
                       <div style={{ display: "flex", gap: "0px", alignItems: "center" }}>
                         {[1, 2, 3, 4, 5].map((starIndex) => (
                           <svg key={starIndex} width="13" height="13" viewBox="0 0 24 24" fill={starIndex <= starCount ? THEME.starFilled : THEME.starEmpty}><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>
                         ))}
                         
                         {info.date && (
-                          <span style={{ marginLeft: "8px", fontSize: "14px", fontWeight: "600", color: THEME.textBlack, whiteSpace: "nowrap" }}>
+                          <span style={{ marginLeft: "6px", fontSize: "14px", fontWeight: "600", color: THEME.textBlack, whiteSpace: "nowrap" }}>
                             {avgScore}점
                           </span>
                         )}
@@ -229,7 +233,8 @@ export default function QuizMenu({ db, onSelect }) {
                           display: "flex", 
                           alignItems: "center", 
                           justifyContent: "center",
-                          flexShrink: 0
+                          flexShrink: 0,
+                          marginLeft: "4px"
                         }} 
                         className="go-btn"
                       >
