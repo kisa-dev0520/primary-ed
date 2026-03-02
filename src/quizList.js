@@ -1,5 +1,8 @@
 // src/quizList.js
 
+// 🌟 [핵심 해결책] Vite 전용 기능: data 폴더 안의 모든 .js 파일을 미리 스캔해서 준비합니다.
+const modules = import.meta.glob('./data/**/*.js');
+
 // 1️⃣ 파일명 앞글자(코드)를 실제 과목명으로 바꿔주는 사전
 const subjectMap = {
   kor: "국어",
@@ -17,13 +20,16 @@ const createQuizMeta = (id) => {
   const grade = `${gradeNum}학년`;
   const title = `${grade} ${subject} 어휘 ${part}`;
 
+  // 스캔해둔 경로와 똑같이 모양을 맞춥니다.
+  const targetPath = `./data/${subjCode}/${gradeNum}th/${id}.js`;
+
   return {
     id: id,
     title: title,
     subject: subject,
     grade: grade,
-    // 동적 임포트로 해당 과목/학년 폴더의 파일을 찾아간다.
-    loader: () => import(`./data/${subjCode}/${gradeNum}th/${id}.js`) 
+    // 🌟 미리 준비된 모듈 객체에서 정확한 로더 함수를 꺼내 연결합니다.
+    loader: modules[targetPath] || (() => Promise.reject(new Error(`파일을 찾을 수 없습니다: ${targetPath}`)))
   };
 };
 

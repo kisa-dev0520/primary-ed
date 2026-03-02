@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import notionFace from './assets/notionFace1.png';
 import { QUIZ_INDEX } from './quizList'; 
 
@@ -35,11 +35,15 @@ export default function QuizMenu({ db, onSelect }) {
     setActiveFilter({ subject, grade });
   };
 
-  const safeDataList = (db && db.length > 0) ? db : (QUIZ_INDEX || []);
+  const safeDataList = useMemo(() => {
+    return (db && db.length > 0) ? db : (QUIZ_INDEX || []);
+  }, [db]);
 
-  const filteredList = safeDataList.filter(item => {
-    return item?.subject === activeFilter.subject && item?.grade === activeFilter.grade;
-  });
+  const filteredList = useMemo(() => {
+    return safeDataList.filter(item => {
+      return item?.subject === activeFilter.subject && item?.grade === activeFilter.grade;
+    });
+  }, [safeDataList, activeFilter.subject, activeFilter.grade]);
 
   useEffect(() => {
     filteredList.forEach(async (item) => {
@@ -49,9 +53,11 @@ export default function QuizMenu({ db, onSelect }) {
         const module = await item.loader();
         const quizData = module.default;
         
+        // 정답 어휘만 추출
         const targetWords = quizData.map(q => q.options[q.correct]);
         const extractedDesc = targetWords.length > 0 ? targetWords.join(", ") : "등록된 어휘가 없습니다.";
 
+        // 로컬스토리지 점수 로드
         const saved1 = JSON.parse(localStorage.getItem(`quiz_progress_${item.id}_step1`)) || JSON.parse(localStorage.getItem(`quiz_progress_${item.id}`)) || null;
         const saved2 = JSON.parse(localStorage.getItem(`quiz_progress_${item.id}_step2`)) || null;
 
@@ -80,6 +86,7 @@ export default function QuizMenu({ db, onSelect }) {
     });
   }, [filteredList]); 
 
+  // ✨ 평균 점수에 따른 별 5개 환산 로직
   const getStarCount = (percentage) => {
     if (!percentage || percentage <= 0) return 0;
     return Math.round((percentage / 100) * 5);
@@ -111,16 +118,19 @@ export default function QuizMenu({ db, onSelect }) {
 
       <main style={{ maxWidth: "800px", margin: "0 auto", padding: "50px 20px 120px 20px", display: "flex", alignItems: "flex-start" }}>
         
-        <aside style={{ width: "140px", flexShrink: 0, paddingRight: "25px" }}>
+        {/* 🌟 수정 1: aside 너비를 140px에서 170px로 넉넉하게 확보 */}
+        <aside style={{ width: "170px", minWidth: "170px", flexShrink: 0, paddingRight: "25px" }}>
           {subjects.map((sub, sIdx) => {
             const isSubjectActive = activeFilter.subject === sub;
             const subjectColor = isSubjectActive ? THEME.primaryColor : THEME.textBlack;
 
             return (
               <div key={sub}>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px", whiteSpace: "nowrap" }}>
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={subjectColor} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-                  <h3 style={{ fontSize: "16px", fontWeight: "900", color: subjectColor, margin: "0" }}>{sub} 어휘 퀴즈</h3>
+                  
+                  {/* 🌟 수정 2: h3 태그에 단어 끊김(wordBreak) 및 줄바꿈 방지(whiteSpace) 강제 적용 */}
+                  <h3 style={{ fontSize: "16px", fontWeight: "900", color: subjectColor, margin: "0", whiteSpace: "nowrap", wordBreak: "keep-all" }}>{sub} 어휘 퀴즈</h3>
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
@@ -132,10 +142,10 @@ export default function QuizMenu({ db, onSelect }) {
 
                     return (
                       <div key={grade} onClick={() => handleSelectFilter(sub, grade)} onMouseEnter={() => setHoveredFilter(`${sub}-${grade}`)} onMouseLeave={() => setHoveredFilter(null)} style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
-                        <div style={{ width: "16px", height: "16px", borderRadius: "3px", background: boxBgColor, border: (isChecked || isHovered) ? "none" : `1px solid #D1D5DB`, display: "flex", justifyContent: "center", alignItems: "center", transition: "all 0.2s" }}>
+                        <div style={{ width: "16px", height: "16px", flexShrink: 0, borderRadius: "3px", background: boxBgColor, border: (isChecked || isHovered) ? "none" : `1px solid #D1D5DB`, display: "flex", justifyContent: "center", alignItems: "center", transition: "all 0.2s" }}>
                           {isChecked && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
                         </div>
-                        <span style={{ fontSize: "14px", color: itemTextColor, fontWeight: (isChecked || isHovered) ? "600" : "400" }}>{grade}</span>
+                        <span style={{ fontSize: "14px", color: itemTextColor, fontWeight: (isChecked || isHovered) ? "600" : "400", whiteSpace: "nowrap" }}>{grade}</span>
                       </div>
                     );
                   })}
@@ -146,9 +156,9 @@ export default function QuizMenu({ db, onSelect }) {
           })}
         </aside>
 
-        <div style={{ width: "1px", background: THEME.borderLighter, alignSelf: "stretch", marginRight: "30px" }}></div>
+        <div style={{ width: "1px", background: THEME.borderLighter, alignSelf: "stretch", marginRight: "30px", flexShrink: 0 }}></div>
 
-        <section style={{ flex: 1, marginTop: "-12px" }}>
+        <section style={{ flex: 1, marginTop: "-12px", minWidth: 0 }}>
           <div style={{ display: "flex", flexDirection: "column" }}>
             {filteredList.length === 0 ? (
               <div style={{ padding: "40px 0", textAlign: "center", color: THEME.textGrayLight, fontSize: "14px" }}>해당 과목/학년에 등록된 어휘 퀴즈가 없습니다.</div>
@@ -157,6 +167,7 @@ export default function QuizMenu({ db, onSelect }) {
                 const isLastItem = index === filteredList.length - 1; 
                 const info = dynamicInfo[item.id] || { desc: "어휘 데이터 추출 중...", date: "", score1: null, score2: null };
                 
+                // ✨ 평균 점수 계산
                 let avgScore = 0;
                 if (info.score1 !== null && info.score2 !== null) {
                   avgScore = Math.round((info.score1 + info.score2) / 2);
@@ -171,21 +182,30 @@ export default function QuizMenu({ db, onSelect }) {
                 return (
                   <div key={item.id} style={{ padding: "12px 0", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: isLastItem ? "none" : `1px solid ${THEME.borderLight}` }}>
                     
-                    <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+                    <div style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0, paddingRight: "16px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
                         <span style={{ fontSize: "16px", fontWeight: "700", color: THEME.textBlack }}>{item.title}</span>
                         {info.date && (
                           <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: "20px", padding: "0 6px", border: `1px solid ${THEME.primaryColor}`, borderRadius: "99px", color: THEME.primaryColor, fontSize: "10px", fontWeight: "500" }}>{info.date}</div>
                         )}
                       </div>
-                      <div style={{ color: THEME.textGrayLight, fontSize: "12px", fontWeight: "400", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "520px" }}>{info.desc}</div>
+                      <div style={{ color: THEME.textGrayLight, fontSize: "12px", fontWeight: "400", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>{info.desc}</div>
                     </div>
 
                     <div style={{ display: "flex", alignItems: "center", gap: "16px", flexShrink: 0 }}>
                       <div style={{ display: "flex", gap: "0px", alignItems: "center" }}>
+                        
+                        {/* 5개 별점 */}
                         {[1, 2, 3, 4, 5].map((starIndex) => (
                           <svg key={starIndex} width="13" height="13" viewBox="0 0 24 24" fill={starIndex <= starCount ? THEME.starFilled : THEME.starEmpty}><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>
                         ))}
+                        
+                        {/* 점수 텍스트 */}
+                        {info.date && (
+                          <span style={{ marginLeft: "8px", fontSize: "14px", fontWeight: "600", color: THEME.textBlack }}>
+                            {avgScore}점
+                          </span>
+                        )}
                       </div>
                       
                       <button 
