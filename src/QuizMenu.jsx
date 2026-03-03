@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { supabase } from './supabaseClient'; // 🌟 Supabase 추가
 import notionFace from './assets/notionFace1.png';
 import { QUIZ_INDEX } from './quizList'; 
 
@@ -46,48 +47,61 @@ export default function QuizMenu({ db, onSelect }) {
   }, [safeDataList, activeFilter.subject, activeFilter.grade]);
 
   useEffect(() => {
-    filteredList.forEach(async (item) => {
-      if (dynamicInfo[item.id]) return;
+    const loadAllData = async () => {
+      // 🌟 1. DB에서 모든 점수 기록을 한 번에 가져오기
+      const { data: dbProgress, error } = await supabase.from('progress').select('*');
+      if (error) console.error("DB 불러오기 에러:", error);
 
-      try {
-        const module = await item.loader();
-        const quizData = module.default;
-        
-        const targetWords = quizData.map(q => q.options[q.correct]);
-        const extractedDesc = targetWords.length > 0 ? targetWords.join(", ") : "등록된 어휘가 없습니다.";
+      filteredList.forEach(async (item) => {
+        if (dynamicInfo[item.id]) return;
 
-        const saved1 = JSON.parse(localStorage.getItem(`quiz_progress_${item.id}_step1`)) || JSON.parse(localStorage.getItem(`quiz_progress_${item.id}`)) || null;
-        const saved2 = JSON.parse(localStorage.getItem(`quiz_progress_${item.id}_step2`)) || null;
+        try {
+          const module = await item.loader();
+          const quizData = module.default;
+          
+          const targetWords = quizData.map(q => q.options[q.correct]);
+          const extractedDesc = targetWords.length > 0 ? targetWords.join(", ") : "등록된 어휘가 없습니다.";
 
-        const score1 = saved1 ? saved1.score : null;
-        const score2 = saved2 ? saved2.score : null;
-        const date1 = saved1 ? new Date(saved1.date) : new Date(0);
-        const date2 = saved2 ? new Date(saved2.date) : new Date(0);
-        
-        const lastSolvedDate = date1 > date2 ? saved1?.date : (saved2?.date || "");
+          // 🌟 2. DB 기록 중 현재 퀴즈에 맞는 데이터 찾기 (여러 번 풀었을 경우 대비해 맨 마지막 최신 기록 사용)
+          const step1Records = dbProgress?.filter(p => p.quiz_id === `${item.id}_step1`) || [];
+          const step2Records = dbProgress?.filter(p => p.quiz_id === `${item.id}_step2`) || [];
 
-        // 날짜 포맷 정리 (YYYY-MM-DD 형식 등으로 짧게 유지)
-        let formattedDate = lastSolvedDate;
-        if (typeof lastSolvedDate === "string" && lastSolvedDate.includes("T")) {
-          formattedDate = lastSolvedDate.split("T")[0];
-        }
+          const step1Data = step1Records[step1Records.length - 1]; 
+          const step2Data = step2Records[step2Records.length - 1]; 
 
-        setDynamicInfo(prev => ({
-          ...prev,
-          [item.id]: {
-            desc: extractedDesc,
-            date: formattedDate,
-            score1: score1,
-            score2: score2
+          const score1 = step1Data ? step1Data.score : null;
+          const score2 = step2Data ? step2Data.score : null;
+          
+          // 🌟 3. 날짜 계산 (Supabase가 자동 생성한 created_at 활용)
+          const date1 = step1Data && step1Data.created_at ? new Date(step1Data.created_at) : new Date(0);
+          const date2 = step2Data && step2Data.created_at ? new Date(step2Data.created_at) : new Date(0);
+          
+          let formattedDate = "";
+          if (step1Data || step2Data) {
+            const recentDate = date1 > date2 ? date1 : date2;
+            const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+            formattedDate = `${monthNames[recentDate.getMonth()]} ${recentDate.getDate()}, ${recentDate.getFullYear()}`;
           }
-        }));
-      } catch (error) {
-        setDynamicInfo(prev => ({
-          ...prev,
-          [item.id]: { desc: "어휘 데이터를 불러올 수 없습니다.", date: "", score1: null, score2: null }
-        }));
-      }
-    });
+
+          setDynamicInfo(prev => ({
+            ...prev,
+            [item.id]: {
+              desc: extractedDesc,
+              date: formattedDate,
+              score1: score1,
+              score2: score2
+            }
+          }));
+        } catch (error) {
+          setDynamicInfo(prev => ({
+            ...prev,
+            [item.id]: { desc: "어휘 데이터를 불러올 수 없습니다.", date: "", score1: null, score2: null }
+          }));
+        }
+      });
+    };
+
+    loadAllData();
   }, [filteredList]); 
 
   const getStarCount = (percentage) => {
@@ -181,16 +195,13 @@ export default function QuizMenu({ db, onSelect }) {
                 return (
                   <div key={item.id} style={{ padding: "12px 0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", borderBottom: isLastItem ? "none" : `1px solid ${THEME.borderLight}` }}>
                     
-                    {/* 🌟 1. 텍스트 정보 영역 (minWidth: 0 이 핵심입니다) */}
                     <div style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
                       
                       <div style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%" }}>
-                        {/* 🌟 타이틀: 영역 밖으로 벗어나지 못하게 flex: 1 과 minWidth: 0 부여 */}
                         <span style={{ fontSize: "16px", fontWeight: "700", color: THEME.textBlack, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, minWidth: 0 }}>
                           {item.title}
                         </span>
                         
-                        {/* 🌟 날짜: 공간을 양보하지 않고 무조건 찌그러짐 방지 (flexShrink: 0) */}
                         {info.date && (
                           <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: "20px", padding: "0 6px", border: `1px solid ${THEME.primaryColor}`, borderRadius: "99px", color: THEME.primaryColor, fontSize: "10px", fontWeight: "500", whiteSpace: "nowrap", flexShrink: 0 }}>
                             {info.date}
@@ -198,13 +209,11 @@ export default function QuizMenu({ db, onSelect }) {
                         )}
                       </div>
 
-                      {/* 🌟 어휘 요약 (desc) 도 영역 밖으로 넘치면 ... 으로 자름 */}
                       <div style={{ color: THEME.textGrayLight, fontSize: "12px", fontWeight: "400", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%", marginTop: "4px" }}>
                         {info.desc}
                       </div>
                     </div>
 
-                    {/* 🌟 2. 오른쪽 점수 및 버튼 영역 (절대 찌그러지지 않도록 묶음) */}
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
                       <div style={{ display: "flex", gap: "0px", alignItems: "center" }}>
                         {[1, 2, 3, 4, 5].map((starIndex) => (

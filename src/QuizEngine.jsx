@@ -395,20 +395,9 @@ export default function QuizEngine({ id, data, meta, onBack }) {
   const currentScore = correctIds.size; 
   const progressPercent = totalInSession > 0 ? ((current) / totalInSession) * 100 : 0; 
 
-  // 🌟 DB 연동 및 로컬 저장 핵심 로직 (팝업창 디버깅용으로 수정됨!)
+  // 🌟 DB 연동 및 로컬 저장 핵심 로직 (완성본)
   useEffect(() => {
-    if (gameState === 'result') {
-      
-      // 화면에 바로 팝업을 띄워서 우리가 받은 id를 확인합니다.
-      alert(`🏁 결과 화면 도착!\n전달받은 id: ${id}\n현재 단계: step${stepMode}`);
-
-      if (!id) {
-         alert("🚨 에러: 퀴즈 id가 없습니다!\n최상위 파일(App.jsx 등)에서 id를 넘겨주지 않았습니다.");
-         return; // id가 없으면 DB에 저장할 수 없으므로 여기서 멈춤
-      }
-
-      if (stepMode === 3) return;
-
+    if (gameState === 'result' && id && stepMode !== 3) {
       const percentage = totalOriginal > 0 ? Math.round((currentScore / totalOriginal) * 100) : 0;
       const today = new Date();
       const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
@@ -429,18 +418,12 @@ export default function QuizEngine({ id, data, meta, onBack }) {
             total_questions: totalInSession,
             incorrect_answers: wrongAnswers
           }]);
-
-        if (error) {
-          alert('❌ DB 저장 실패: ' + error.message);
-        } else {
-          alert('✅ DB 저장 완벽하게 성공했습니다!');
-        }
       };
 
       saveToDB();
     }
   }, [gameState, id, currentScore, totalOriginal, stepMode, questions, correctIds, totalInSession]);
-
+  
   const handleSelect = (idx) => { 
     if (selected !== null || !isClickable) return; 
     setSelected(idx); 
