@@ -48,7 +48,7 @@ export default function QuizMenu({ db, onSelect }) {
 
   useEffect(() => {
     const loadAllData = async () => {
-      // 🌟 1. DB에서 모든 점수 기록을 한 번에 가져오기
+      // DB에서 모든 점수 기록 가져오기
       const { data: dbProgress, error } = await supabase.from('progress').select('*');
       if (error) console.error("DB 불러오기 에러:", error);
 
@@ -62,7 +62,7 @@ export default function QuizMenu({ db, onSelect }) {
           const targetWords = quizData.map(q => q.options[q.correct]);
           const extractedDesc = targetWords.length > 0 ? targetWords.join(", ") : "등록된 어휘가 없습니다.";
 
-          // 🌟 2. DB 기록 중 현재 퀴즈에 맞는 데이터 찾기 (여러 번 풀었을 경우 대비해 맨 마지막 최신 기록 사용)
+          // 현재 퀴즈에 맞는 최신 데이터 찾기
           const step1Records = dbProgress?.filter(p => p.quiz_id === `${item.id}_step1`) || [];
           const step2Records = dbProgress?.filter(p => p.quiz_id === `${item.id}_step2`) || [];
 
@@ -72,13 +72,15 @@ export default function QuizMenu({ db, onSelect }) {
           const score1 = step1Data ? step1Data.score : null;
           const score2 = step2Data ? step2Data.score : null;
           
-          // 🌟 3. 날짜 계산 (Supabase가 자동 생성한 created_at 활용)
-          const date1 = step1Data && step1Data.created_at ? new Date(step1Data.created_at) : new Date(0);
-          const date2 = step2Data && step2Data.created_at ? new Date(step2Data.created_at) : new Date(0);
+          // 🌟 1970년 버그 방지: 유효한 타임스탬프(숫자)로 변환 후 비교
+          const time1 = step1Data?.created_at ? new Date(step1Data.created_at).getTime() : 0;
+          const time2 = step2Data?.created_at ? new Date(step2Data.created_at).getTime() : 0;
+          const maxTime = Math.max(time1, time2);
           
           let formattedDate = "";
-          if (step1Data || step2Data) {
-            const recentDate = date1 > date2 ? date1 : date2;
+          // 타임스탬프가 0보다 클 때만 날짜를 표기 (1970년 표기 완벽 차단)
+          if (maxTime > 0) {
+            const recentDate = new Date(maxTime);
             const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
             formattedDate = `${monthNames[recentDate.getMonth()]} ${recentDate.getDate()}, ${recentDate.getFullYear()}`;
           }
@@ -193,35 +195,36 @@ export default function QuizMenu({ db, onSelect }) {
                 const starCount = getStarCount(avgScore);
 
                 return (
-                  <div key={item.id} style={{ padding: "12px 0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", borderBottom: isLastItem ? "none" : `1px solid ${THEME.borderLight}` }}>
+                  <div key={item.id} style={{ padding: "16px 0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", borderBottom: isLastItem ? "none" : `1px solid ${THEME.borderLight}` }}>
                     
                     <div style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
                       
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%" }}>
-                        <span style={{ fontSize: "16px", fontWeight: "700", color: THEME.textBlack, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, minWidth: 0 }}>
+                      {/* 🌟 제목과 날짜가 착 달라붙게 수정된 부분 */}
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%" }}>
+                        <span style={{ fontSize: "18px", fontWeight: "800", color: THEME.textBlack, whiteSpace: "nowrap" }}>
                           {item.title}
                         </span>
                         
                         {info.date && (
-                          <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: "20px", padding: "0 6px", border: `1px solid ${THEME.primaryColor}`, borderRadius: "99px", color: THEME.primaryColor, fontSize: "10px", fontWeight: "500", whiteSpace: "nowrap", flexShrink: 0 }}>
+                          <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: "22px", padding: "0 8px", border: `1px solid ${THEME.primaryColor}`, borderRadius: "99px", color: THEME.primaryColor, fontSize: "11px", fontWeight: "700", whiteSpace: "nowrap", flexShrink: 0 }}>
                             {info.date}
                           </div>
                         )}
                       </div>
 
-                      <div style={{ color: THEME.textGrayLight, fontSize: "12px", fontWeight: "400", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%", marginTop: "4px" }}>
+                      <div style={{ color: THEME.textGrayLight, fontSize: "13px", fontWeight: "500", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%", marginTop: "6px" }}>
                         {info.desc}
                       </div>
                     </div>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
                       <div style={{ display: "flex", gap: "0px", alignItems: "center" }}>
                         {[1, 2, 3, 4, 5].map((starIndex) => (
-                          <svg key={starIndex} width="13" height="13" viewBox="0 0 24 24" fill={starIndex <= starCount ? THEME.starFilled : THEME.starEmpty}><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>
+                          <svg key={starIndex} width="14" height="14" viewBox="0 0 24 24" fill={starIndex <= starCount ? THEME.starFilled : THEME.starEmpty}><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>
                         ))}
                         
                         {info.date && (
-                          <span style={{ marginLeft: "6px", fontSize: "14px", fontWeight: "600", color: THEME.textBlack, whiteSpace: "nowrap" }}>
+                          <span style={{ marginLeft: "8px", fontSize: "15px", fontWeight: "700", color: THEME.textBlack, whiteSpace: "nowrap" }}>
                             {avgScore}점
                           </span>
                         )}
@@ -232,10 +235,10 @@ export default function QuizMenu({ db, onSelect }) {
                         style={{ 
                           background: "transparent", 
                           color: THEME.success, 
-                          border: `1px solid ${THEME.success}`, 
+                          border: `1.5px solid ${THEME.success}`, 
                           borderRadius: "99px", 
-                          width: "24px", 
-                          height: "24px", 
+                          width: "28px", 
+                          height: "28px", 
                           padding: 0, 
                           cursor: "pointer", 
                           transition: "all 0.2s", 
@@ -247,7 +250,7 @@ export default function QuizMenu({ db, onSelect }) {
                         }} 
                         className="go-btn"
                       >
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                       </button>
                     </div>
 

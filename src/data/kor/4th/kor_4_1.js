@@ -201,7 +201,7 @@ export default [
   {
     id: 8,
     question: [
-      { type: "text", content: "실제 인물인 세종대왕이 한글을 만들기까지 어떤 삶을 살았는지 기록한 글을 읽했어요." },
+      { type: "text", content: "실제 인물인 세종대왕이 한글을 만들기까지 어떤 삶을 살았는지 기록한 글을 읽혔어요." },
       { type: "break" },
       { type: "break" },
       { type: "text", content: "이처럼 " },
