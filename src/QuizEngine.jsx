@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { supabase } from './supabaseClient'; // 🌟 Supabase 연결 통로
 
 // ==========================================
 // 🎨 1. 디자인 테마 (Design Theme)
@@ -66,7 +67,7 @@ function buildShuffled(data, stepMode = 1) {
     return { 
       ...q, 
       appliedMode: currentItemMode, 
-      originalQuestion: q.question, // ✨ STEP 2 자동 완성을 위해 원본 문장 저장
+      originalQuestion: q.question, 
       question: isStep2 ? step2Question : q.question, 
       shuffledIndices: shuffled, 
       options: shuffled.map((i) => isStep2 ? q.meanings[i] : q.options[i]),     
@@ -77,7 +78,6 @@ function buildShuffled(data, stepMode = 1) {
   }); 
 }
 
-// ✨ 정답 단어의 받침 유무를 확인하는 함수
 function hasJongseong(word) {
   if (!word) return false;
   const charCode = word.charCodeAt(word.length - 1);
@@ -85,14 +85,12 @@ function hasJongseong(word) {
   return (charCode - 0xAC00) % 28 !== 0;
 }
 
-// ✨ STEP 2용: 원본 질문과 '어휘'를 결합하여 쌍따옴표가 포함된 완벽한 문장으로 만들어주는 마법의 함수!
 function generateCompletedSentence(questionParts, correctWord) {
   if (!questionParts || questionParts.length === 0) return [];
   
   const parts = [];
   let isFirst = true;
   
-  // 1. 시작 쌍따옴표 추가 및 break(줄바꿈) 없애고 자연스럽게 띄어쓰기로 이어붙이기
   for (let p of questionParts) {
     if (p.type === "break") {
       if (parts.length > 0) {
@@ -120,21 +118,15 @@ function generateCompletedSentence(questionParts, correctWord) {
   const validWord = correctWord || ""; 
   const hasJong = hasJongseong(validWord);
 
-  // 2. 질문 문구(뭐라고 할까요, 무엇일까요 등)를 완벽하게 지우고 "(이)라고 합니다"로 교체
   if (parts[lastIdx] && typeof parts[lastIdx].content === 'string') {
     let lastText = parts[lastIdx].content;
-    
-    // 모든 형태의 질문형 어미 정규식으로 싹 지우기
     lastText = lastText.replace(/(무엇|뭐)(이)?라고 할까요\??\s*$/, "");
     lastText = lastText.replace(/무엇일까요\??\s*$/, "");
-    lastText = lastText.replace(/\?\s*$/, ""); // 물음표만 있을 경우 대비
-    
-    // 끝에 띄어쓰기 한 칸 깔끔하게 보장
+    lastText = lastText.replace(/\?\s*$/, ""); 
     lastText = lastText.trimEnd() + " "; 
     parts[lastIdx].content = lastText;
   }
   
-  // 3. textMain 색상의 볼드체 어휘와 닫는 쌍따옴표 추가
   parts.push({ type: "textMain_bold", content: validWord }); 
   parts.push({ type: "text", content: hasJong ? "이라고 합니다.\"" : "라고 합니다.\"" });
   
@@ -147,7 +139,6 @@ function RichText({ parts }) {
       {parts.map((p, i) => { 
         if (p.type === "highlight") return <span key={i} style={{ fontWeight: 700, color: THEME.colors.primary }}>{p.content}</span>; 
         if (p.type === "bold") return <strong key={i} style={{ fontWeight: 700, color: "inherit" }}>{p.content}</strong>; 
-        // ✨ 새로 추가된 타입: textMain 색상으로 진하게 (STEP 2 자동완성 어휘용)
         if (p.type === "textMain_bold") return <strong key={i} style={{ fontWeight: 700, color: THEME.colors.textMain }}>{p.content}</strong>;
         if (p.type === "break") return <br key={i} />; 
 
@@ -404,15 +395,51 @@ export default function QuizEngine({ id, data, meta, onBack }) {
   const currentScore = correctIds.size; 
   const progressPercent = totalInSession > 0 ? ((current) / totalInSession) * 100 : 0; 
 
+  // 🌟 DB 연동 및 로컬 저장 핵심 로직 (팝업창 디버깅용으로 수정됨!)
   useEffect(() => {
-    if (gameState === 'result' && id && stepMode !== 3) {
+    if (gameState === 'result') {
+      
+      // 화면에 바로 팝업을 띄워서 우리가 받은 id를 확인합니다.
+      alert(`🏁 결과 화면 도착!\n전달받은 id: ${id}\n현재 단계: step${stepMode}`);
+
+      if (!id) {
+         alert("🚨 에러: 퀴즈 id가 없습니다!\n최상위 파일(App.jsx 등)에서 id를 넘겨주지 않았습니다.");
+         return; // id가 없으면 DB에 저장할 수 없으므로 여기서 멈춤
+      }
+
+      if (stepMode === 3) return;
+
       const percentage = totalOriginal > 0 ? Math.round((currentScore / totalOriginal) * 100) : 0;
       const today = new Date();
       const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
       const formattedDate = `${monthNames[today.getMonth()]} ${today.getDate()}, ${today.getFullYear()}`;
+      
       localStorage.setItem(`quiz_progress_${id}_step${stepMode}`, JSON.stringify({ date: formattedDate, score: percentage }));
+
+      const saveToDB = async () => {
+        const wrongAnswers = questions
+          .filter((_, index) => !correctIds.has(index))
+          .map(q => q.options[q.correct]);
+
+        const { data, error } = await supabase
+          .from('progress')
+          .insert([{ 
+            quiz_id: `${id}_step${stepMode}`,
+            score: percentage,
+            total_questions: totalInSession,
+            incorrect_answers: wrongAnswers
+          }]);
+
+        if (error) {
+          alert('❌ DB 저장 실패: ' + error.message);
+        } else {
+          alert('✅ DB 저장 완벽하게 성공했습니다!');
+        }
+      };
+
+      saveToDB();
     }
-  }, [gameState, id, currentScore, totalOriginal, stepMode]);
+  }, [gameState, id, currentScore, totalOriginal, stepMode, questions, correctIds, totalInSession]);
 
   const handleSelect = (idx) => { 
     if (selected !== null || !isClickable) return; 
@@ -783,7 +810,6 @@ export default function QuizEngine({ id, data, meta, onBack }) {
   
   const currentQMode = q.appliedMode || stepMode; 
 
-  // ✨ 어떤 상황에서도 100% 정확하게 '오리지널 어휘(정답)'를 추출
   const actualWord = currentQMode === 2 ? q.meanings[q.correct] : q.options[q.correct];
 
   return (
