@@ -73,8 +73,8 @@ export default function QuizMenu({ db, onSelect }) {
           const score2 = step2Data ? step2Data.score : null;
           
           // 🌟 1970년 버그 방지: 유효한 타임스탬프(숫자)로 변환 후 비교
-          const time1 = step1Data?.created_at ? new Date(step1Data.created_at).getTime() : 0;
-          const time2 = step2Data?.created_at ? new Date(step2Data.created_at).getTime() : 0;
+          const time1 = step1Data?.completed_at ? new Date(step1Data.completed_at).getTime() : 0;
+          const time2 = step2Data?.completed_at ? new Date(step2Data.completed_at).getTime() : 0;
           const maxTime = Math.max(time1, time2);
           
           let formattedDate = "";
