@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { supabase } from './supabaseClient'; // 🌟 Supabase 연결 통로
+import { supabase } from '../supabaseClient'; // 🌟 Supabase 연결 통로
 
 // ==========================================
 // 🎨 1. 디자인 테마 (Design Theme)
@@ -332,7 +332,7 @@ const Wrapper = ({ children }) => (
 // ==========================================
 // 🚀 4. 메인 퀴즈 시스템 컴포넌트
 // ==========================================
-export default function QuizEngine({ id, data, meta, onBack }) {
+export default function QuizEngine({ id, data, meta, onBack, userId }) {
   const [questions, setQuestions] = useState([]);         
   const [current, setCurrent] = useState(0);              
   const [selected, setSelected] = useState(null);         
@@ -416,7 +416,8 @@ export default function QuizEngine({ id, data, meta, onBack }) {
             quiz_id: `${id}_step${stepMode}`,
             score: percentage,
             total_questions: totalInSession,
-            incorrect_answers: wrongAnswers
+            incorrect_answers: wrongAnswers,
+            ...(userId ? { user_id: userId } : {})
           }]);
       };
 
