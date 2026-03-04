@@ -121,19 +121,211 @@ function LoginScreen() {
 }
 
 // ==========================================
+// 홈 탭 컴포넌트
+// ==========================================
+function HomeTab({ tasks, books, timetable, today, quizStats, onNavigate }) {
+  const doneTasks = tasks.filter(t => t.done).length;
+  const totalTasks = tasks.length;
+  const taskPercent = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+
+  const todaySchedule = (timetable[today] || []).filter(s => s);
+
+  const avgBookProgress = books.length > 0
+    ? Math.round(books.reduce((sum, b) => sum + Math.round((b.done / b.total) * 100), 0) / books.length)
+    : 0;
+
+  const menuCards = [
+    {
+      id: "timetable", emoji: "📅", label: "시간표",
+      value: `${todaySchedule.length}교시`, sub: "오늘 수업",
+      color: "#6C5CE7", bg: "#EDE7F6",
+    },
+    {
+      id: "books", emoji: "📚", label: "진도표",
+      value: `${books.length}권`, sub: `평균 ${avgBookProgress}%`,
+      color: "#FF9F43", bg: "#FFF3E0",
+    },
+    {
+      id: "tasks", emoji: "✅", label: "할일",
+      value: `${doneTasks}/${totalTasks}`, sub: `${taskPercent}% 완료`,
+      color: "#1DD1A1", bg: "#E0F7F1",
+    },
+    {
+      id: "quiz", emoji: "🧠", label: "퀴즈",
+      value: quizStats.count > 0 ? `${quizStats.avgScore}점` : "-",
+      sub: quizStats.count > 0 ? `${quizStats.count}회 완료` : "아직 없음",
+      color: "#FF6B6B", bg: "#FFE8E8",
+    },
+  ];
+
+  return (
+    <div style={{ padding: "20px" }}>
+
+      {/* 메뉴 카드 4개 */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#aaa", marginBottom: 12, letterSpacing: 1 }}>MENU</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {menuCards.map(card => (
+            <div key={card.id} onClick={() => onNavigate(card.id)}
+              style={{
+                background: "#fff", borderRadius: 18, padding: "18px 16px",
+                boxShadow: "0 3px 14px rgba(0,0,0,0.07)",
+                cursor: "pointer", transition: "transform 0.15s, box-shadow 0.15s",
+                borderLeft: `4px solid ${card.color}`,
+              }}
+              onMouseDown={e => e.currentTarget.style.transform = "scale(0.97)"}
+              onMouseUp={e => e.currentTarget.style.transform = "scale(1)"}
+              onTouchStart={e => e.currentTarget.style.transform = "scale(0.97)"}
+              onTouchEnd={e => e.currentTarget.style.transform = "scale(1)"}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <div style={{ width: 38, height: 38, borderRadius: 12, background: card.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
+                  {card.emoji}
+                </div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: card.color, marginBottom: 2 }}>{card.value}</div>
+              <div style={{ fontSize: 11, color: "#999", fontWeight: 600 }}>{card.sub}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#333", marginTop: 4 }}>{card.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 오늘 시간표 미리보기 */}
+      <div style={{ background: "#fff", borderRadius: 18, padding: "18px 20px", marginBottom: 16, boxShadow: "0 3px 14px rgba(0,0,0,0.07)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <div style={{ fontWeight: 800, fontSize: 15, color: "#333" }}>📅 오늘 시간표 <span style={{ color: "#6C5CE7" }}>{today}요일</span></div>
+          <button onClick={() => onNavigate("timetable")} style={{ background: "none", border: "none", color: "#aaa", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>전체보기 →</button>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {(timetable[today] || []).map((subject, i) => {
+            const col = getSubjectColor(subject);
+            return (
+              <div key={i} style={{
+                padding: "6px 12px", borderRadius: 99,
+                background: subject ? col.light : "#f5f5f5",
+                color: subject ? col.bg : "#ccc",
+                fontSize: 13, fontWeight: 700,
+                display: "flex", alignItems: "center", gap: 6,
+              }}>
+                <span style={{ fontSize: 10, color: subject ? col.bg : "#ccc", opacity: 0.7 }}>{i + 1}</span>
+                {subject || "-"}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 할일 진행률 */}
+      <div style={{ background: "#fff", borderRadius: 18, padding: "18px 20px", marginBottom: 16, boxShadow: "0 3px 14px rgba(0,0,0,0.07)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div style={{ fontWeight: 800, fontSize: 15, color: "#333" }}>✅ 오늘 할일</div>
+          <button onClick={() => onNavigate("tasks")} style={{ background: "none", border: "none", color: "#aaa", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>전체보기 →</button>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ height: 10, borderRadius: 99, background: "#f0f0f0", overflow: "hidden", marginBottom: 6 }}>
+              <div style={{ height: "100%", borderRadius: 99, background: "linear-gradient(90deg, #1DD1A1, #48DBFB)", width: `${taskPercent}%`, transition: "width 0.4s ease" }} />
+            </div>
+            <div style={{ fontSize: 12, color: "#aaa" }}>
+              {doneTasks === totalTasks && totalTasks > 0 ? "🎉 모두 완료!" : `${totalTasks - doneTasks}개 남음`}
+            </div>
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 900, color: "#1DD1A1" }}>{taskPercent}%</div>
+        </div>
+        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+          {tasks.slice(0, 3).map(t => (
+            <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: t.done ? "#1DD1A1" : "#eee", flexShrink: 0 }} />
+              <span style={{ fontSize: 13, color: t.done ? "#aaa" : "#333", textDecoration: t.done ? "line-through" : "none", fontWeight: 500 }}>{t.text}</span>
+            </div>
+          ))}
+          {tasks.length > 3 && <div style={{ fontSize: 12, color: "#bbb", paddingLeft: 16 }}>+{tasks.length - 3}개 더</div>}
+        </div>
+      </div>
+
+      {/* 교재 진도 현황 */}
+      <div style={{ background: "#fff", borderRadius: 18, padding: "18px 20px", marginBottom: 16, boxShadow: "0 3px 14px rgba(0,0,0,0.07)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <div style={{ fontWeight: 800, fontSize: 15, color: "#333" }}>📚 교재 진도</div>
+          <button onClick={() => onNavigate("books")} style={{ background: "none", border: "none", color: "#aaa", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>전체보기 →</button>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {books.map(b => {
+            const pct = Math.round((b.done / b.total) * 100);
+            return (
+              <div key={b.id}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#333" }}>{b.title}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: b.color }}>{pct}%</span>
+                </div>
+                <div style={{ height: 6, borderRadius: 99, background: "#f0f0f0", overflow: "hidden" }}>
+                  <div style={{ height: "100%", borderRadius: 99, background: `linear-gradient(90deg, ${b.color}88, ${b.color})`, width: `${pct}%`, transition: "width 0.4s ease" }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 퀴즈 성적 현황 */}
+      <div style={{ background: "#fff", borderRadius: 18, padding: "18px 20px", boxShadow: "0 3px 14px rgba(0,0,0,0.07)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <div style={{ fontWeight: 800, fontSize: 15, color: "#333" }}>🧠 퀴즈 성적</div>
+          <button onClick={() => onNavigate("quiz")} style={{ background: "none", border: "none", color: "#aaa", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>전체보기 →</button>
+        </div>
+        {quizStats.count === 0 ? (
+          <div style={{ textAlign: "center", color: "#ccc", fontSize: 14, padding: "16px 0" }}>아직 퀴즈 기록이 없어요</div>
+        ) : (
+          <div style={{ display: "flex", gap: 12 }}>
+            {[
+              { label: "평균 점수", value: `${quizStats.avgScore}점`, color: "#FF6B6B" },
+              { label: "최고 점수", value: `${quizStats.maxScore}점`, color: "#FECA57" },
+              { label: "완료 횟수", value: `${quizStats.count}회`, color: "#A29BFE" },
+            ].map(s => (
+              <div key={s.label} style={{ flex: 1, background: "#fafafa", borderRadius: 12, padding: "12px 0", textAlign: "center" }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: s.color }}>{s.value}</div>
+                <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+        )}
+        {quizStats.recentList && quizStats.recentList.length > 0 && (
+          <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+            {quizStats.recentList.map((q, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 13, color: "#555", fontWeight: 600 }}>{q.quiz_id.replace("_step1", " Step1").replace("_step2", " Step2").replace("kor_", "국어 ").replace("soc_", "사회 ").replace("sci_", "과학 ")}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  {[1,2,3,4,5].map(s => (
+                    <svg key={s} width="12" height="12" viewBox="0 0 24 24" fill={s <= Math.round((q.score / 100) * 5) ? "#FECA57" : "#eee"}>
+                      <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                    </svg>
+                  ))}
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#FF6B6B", marginLeft: 4 }}>{q.score}점</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
 // 메인 앱
 // ==========================================
 export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [tab, setTab] = useState("timetable");
+  const [tab, setTab] = useState("home");
 
-  // 퀴즈 관련
   const [activeQuizData, setActiveQuizData] = useState(null);
   const [activeMeta, setActiveMeta] = useState(null);
   const [quizLoading, setQuizLoading] = useState(false);
+  const [quizStats, setQuizStats] = useState({ count: 0, avgScore: 0, maxScore: 0, recentList: [] });
 
-  // 대시보드 데이터
   const [timetable, setTimetable] = useState(defaultTimetable);
   const [books, setBooks] = useState(defaultBooks);
   const [tasks, setTasks] = useState(defaultTasks);
@@ -164,6 +356,23 @@ export default function App() {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  // 퀴즈 통계 불러오기
+  useEffect(() => {
+    if (!user) return;
+    const loadQuizStats = async () => {
+      const { data, error } = await supabase.from("progress").select("*").order("completed_at", { ascending: false });
+      if (error || !data || data.length === 0) return;
+      const scores = data.map(d => d.score);
+      setQuizStats({
+        count: data.length,
+        avgScore: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length),
+        maxScore: Math.max(...scores),
+        recentList: data.slice(0, 3),
+      });
+    };
+    loadQuizStats();
+  }, [user]);
 
   const handleSelectQuiz = async (menuItem) => {
     setQuizLoading(true);
@@ -208,7 +417,6 @@ export default function App() {
     setBooks(books.map(b => b.id !== id ? b : { ...b, done: Math.max(0, Math.min(b.total, b.done + delta)) }));
   }
 
-  // 퀴즈 실행 중이면 전체화면으로 전환
   if (activeQuizData && activeMeta) {
     return (
       <QuizEngine
@@ -235,6 +443,7 @@ export default function App() {
   const avatarUrl = user?.user_metadata?.avatar_url;
 
   const tabs = [
+    { id: "home",      label: "🏠 홈" },
     { id: "timetable", label: "📅 시간표" },
     { id: "books",     label: "📚 진도표" },
     { id: "tasks",     label: "✅ 할일" },
@@ -258,7 +467,6 @@ export default function App() {
       }}>
         <div style={{ position: "absolute", top: -40, right: -40, width: 160, height: 160, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
         <div style={{ position: "absolute", bottom: -20, left: 60, width: 100, height: 100, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
-
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
           {avatarUrl ? (
             <img src={avatarUrl} alt={displayName} style={{ width: 44, height: 44, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.5)", objectFit: "cover" }} />
@@ -272,7 +480,6 @@ export default function App() {
             <div style={{ color: "#fff", fontSize: 20, fontWeight: 800 }}>{firstName} 학습 대시보드</div>
           </div>
         </div>
-
         <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
           {[
             { label: "오늘 할일", val: `${doneTasks}/${totalTasks}`, color: "#FECA57" },
@@ -288,10 +495,11 @@ export default function App() {
       </div>
 
       {/* 탭 바 */}
-      <div style={{ display: "flex", gap: 8, padding: "20px 20px 0" }}>
+      <div style={{ display: "flex", gap: 6, padding: "16px 16px 0", overflowX: "auto" }}>
         {tabs.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
-            flex: 1, padding: "12px 4px", borderRadius: 16, border: "none",
+            flexShrink: 0,
+            padding: "10px 14px", borderRadius: 14, border: "none",
             background: tab === t.id ? "linear-gradient(135deg, #6C5CE7, #a855f7)" : "#fff",
             color: tab === t.id ? "#fff" : "#888",
             fontWeight: 700, fontSize: 12, cursor: "pointer",
@@ -301,11 +509,23 @@ export default function App() {
         ))}
       </div>
 
-      <div style={{ padding: "20px" }}>
+      {/* ===== 홈 탭 ===== */}
+      {tab === "home" && (
+        <HomeTab
+          tasks={tasks}
+          books={books}
+          timetable={timetable}
+          today={today}
+          quizStats={quizStats}
+          onNavigate={(id) => setTab(id)}
+        />
+      )}
+
+      <div style={{ padding: tab === "home" ? "0" : "20px" }}>
 
         {/* ===== 시간표 ===== */}
         {tab === "timetable" && (
-          <div>
+          <div style={{ padding: "20px" }}>
             <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 14, color: "#333" }}>📅 주간 시간표</div>
             <div style={{ background: "#fff", borderRadius: 20, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.08)" }}>
               <div style={{ display: "grid", gridTemplateColumns: "48px repeat(5, 1fr)" }}>
@@ -341,7 +561,7 @@ export default function App() {
 
         {/* ===== 진도표 ===== */}
         {tab === "books" && (
-          <div>
+          <div style={{ padding: "20px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <div style={{ fontWeight: 800, fontSize: 18, color: "#333" }}>📚 교재 진도표</div>
               <button onClick={() => setShowAddBook(!showAddBook)} style={{ background: "linear-gradient(135deg,#6C5CE7,#a855f7)", color: "#fff", border: "none", borderRadius: 12, padding: "8px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>+ 추가</button>
@@ -382,7 +602,7 @@ export default function App() {
 
         {/* ===== 할일 ===== */}
         {tab === "tasks" && (
-          <div>
+          <div style={{ padding: "20px" }}>
             <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 6, color: "#333" }}>✅ 오늘 할일</div>
             <div style={{ fontSize: 13, color: "#aaa", marginBottom: 14 }}>
               {doneTasks === totalTasks && totalTasks > 0 ? "🎉 다 끝났어요! 최고예요!" : `${totalTasks - doneTasks}개 남았어요, 파이팅!`}
@@ -415,15 +635,17 @@ export default function App() {
 
         {/* ===== 퀴즈 ===== */}
         {tab === "quiz" && (
-          quizLoading ? (
-            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: 200, flexDirection: "column", gap: 10 }}>
-              <div style={{ width: 30, height: 30, border: "3px solid #EDE7F6", borderTop: "3px solid #6C5CE7", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
-              <style>{`@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}`}</style>
-              <div style={{ fontSize: 14, color: "#6C5CE7", fontWeight: 700 }}>문제지 가져오는 중...</div>
-            </div>
-          ) : (
-            <QuizMenu db={QUIZ_INDEX} onSelect={handleSelectQuiz} />
-          )
+          <div style={{ padding: "20px" }}>
+            {quizLoading ? (
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: 200, flexDirection: "column", gap: 10 }}>
+                <div style={{ width: 30, height: 30, border: "3px solid #EDE7F6", borderTop: "3px solid #6C5CE7", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+                <style>{`@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}`}</style>
+                <div style={{ fontSize: 14, color: "#6C5CE7", fontWeight: 700 }}>문제지 가져오는 중...</div>
+              </div>
+            ) : (
+              <QuizMenu db={QUIZ_INDEX} onSelect={handleSelectQuiz} />
+            )}
+          </div>
         )}
 
       </div>
