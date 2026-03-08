@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
+import Home from './pages/Home';
 import QuizMenu from "./pages/QuizMenu";
 import QuizEngine from "./pages/QuizEngine";
 import { QUIZ_INDEX } from "./quizList";
@@ -402,103 +403,12 @@ export default function App() {
   ];
 
   return (
-    <div style={{ minHeight:"100vh", background:"#fff", fontFamily:"'Pretendard','Apple SD Gothic Neo',sans-serif", maxWidth:430, margin:"0 auto" }}>
-      <style>{`* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; } body { margin:0; background:#fff; }`}</style>
-
-      {/* ── 상단 프로필 ── */}
-      <div style={{ padding:"56px 24px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-        <div>
-          <div style={{ fontSize:13, color:"#aaa", fontWeight:500 }}>{greeting}</div>
-          <div style={{ fontSize:24, fontWeight:900, color:"#111", marginTop:2 }}>{firstName}의 대시보드</div>
-        </div>
-        {avatarUrl
-          ? <img src={avatarUrl} style={{ width:44, height:44, borderRadius:"50%", objectFit:"cover", border:"2px solid #F0F0F0" }}/>
-          : <div style={{ width:44, height:44, borderRadius:"50%", background:"#F0F0F0", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, fontWeight:900, color:"#555" }}>{firstName.charAt(0)}</div>
-        }
-      </div>
-
-      {/* ── 오늘 현황 배너 ── */}
-      <div style={{ margin:"24px 24px 0", background:"#F8F8F8", borderRadius:24, padding:"20px 24px", position:"relative", overflow:"hidden" }}>
-        <div style={{ position:"absolute", right:-10, top:-10, width:100, height:100, borderRadius:"50%", background:"#EFEFEF" }}/>
-        <div style={{ position:"relative" }}>
-          <div style={{ fontSize:13, color:"#aaa", fontWeight:600, marginBottom:4 }}>오늘 {today}요일</div>
-          <div style={{ fontSize:28, fontWeight:900, color:"#111", marginBottom:2 }}>
-            {doneTasks === tasks.length && tasks.length > 0 ? "🎉 다 끝났어요!" : `할일 ${doneTasks}/${tasks.length} 완료`}
-          </div>
-          <div style={{ fontSize:13, color:"#aaa" }}>수업 {todaySubs.length}교시 · 교재 {books.length}권</div>
-          {/* 진행바 */}
-          <div style={{ marginTop:16, height:6, borderRadius:99, background:"#E8E8E8", overflow:"hidden" }}>
-            <div style={{ height:"100%", borderRadius:99, background:"#111", width:`${taskPct}%`, transition:"width 0.5s ease" }}/>
-          </div>
-        </div>
-      </div>
-
-      {/* ── 원형 아이콘 메뉴 4개 ── */}
-      <div style={{ padding:"32px 24px 0" }}>
-        <div style={{ display:"flex", justifyContent:"space-between" }}>
-          {menuItems.map(m => (
-            <button key={m.id} onClick={()=>setScreen(m.id)}
-              style={{ background:"none", border:"none", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:10, padding:0 }}
-            >
-              <div style={{
-                width:64, height:64, borderRadius:"50%",
-                background: m.bg,
-                display:"flex", alignItems:"center", justifyContent:"center",
-                transition:"transform 0.15s",
-              }}
-                onMouseDown={e=>e.currentTarget.style.transform="scale(0.9)"}
-                onMouseUp={e=>e.currentTarget.style.transform="scale(1)"}
-                onTouchStart={e=>e.currentTarget.style.transform="scale(0.9)"}
-                onTouchEnd={e=>e.currentTarget.style.transform="scale(1)"}
-              >
-                <m.Icon color={m.color}/>
-              </div>
-              <span style={{ fontSize:12, fontWeight:700, color:"#333" }}>{m.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ── 오늘 시간표 ── */}
-      <div style={{ padding:"32px 24px 0" }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-          <span style={{ fontSize:17, fontWeight:900, color:"#111" }}>오늘 시간표</span>
-          <button onClick={()=>setScreen("timetable")} style={{ background:"none", border:"none", color:"#aaa", fontSize:13, cursor:"pointer", fontWeight:600, display:"flex", alignItems:"center", gap:2 }}>
-            전체보기 <Icon.ChevronRight/>
-          </button>
-        </div>
-        <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-          {(timetable[today]||[]).map((sub,i)=>{
-            const c = getColor(sub);
-            return (
-              <div key={i} style={{ background:sub?c.light:"#FAFAFA", borderRadius:12, padding:"8px 14px", display:"flex", alignItems:"center", gap:6 }}>
-                <span style={{ fontSize:11, fontWeight:700, color:sub?c.bg:"#ddd" }}>{i+1}</span>
-                <span style={{ fontSize:13, fontWeight:700, color:sub?c.bg:"#ccc" }}>{sub||"–"}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── 할일 목록 ── */}
-      <div style={{ padding:"28px 24px 60px" }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-          <span style={{ fontSize:17, fontWeight:900, color:"#111" }}>할일</span>
-          <button onClick={()=>setScreen("tasks")} style={{ background:"none", border:"none", color:"#aaa", fontSize:13, cursor:"pointer", fontWeight:600, display:"flex", alignItems:"center", gap:2 }}>
-            전체보기 <Icon.ChevronRight/>
-          </button>
-        </div>
-        <div style={{ display:"flex", flexDirection:"column", gap:0 }}>
-          {tasks.slice(0,4).map(t=>(
-            <div key={t.id} style={{ display:"flex", alignItems:"center", gap:14, padding:"12px 0", borderBottom:"1px solid #F5F5F5", opacity:t.done?0.4:1, transition:"opacity 0.2s" }}>
-              <div style={{ width:10, height:10, borderRadius:"50%", background:t.done?"#1DD1A1":"#E8E8E8", flexShrink:0, transition:"background 0.2s" }}/>
-              <span style={{ fontSize:14, fontWeight:500, color:"#111", textDecoration:t.done?"line-through":"none", flex:1 }}>{t.text}</span>
-              {t.done && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1DD1A1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
-            </div>
-          ))}
-          {tasks.length>4 && <div style={{ fontSize:13, color:"#ccc", paddingTop:12 }}>+{tasks.length-4}개 더</div>}
-        </div>
-      </div>
-    </div>
+    <Home
+      setScreen={setScreen}
+      user={user}
+      tasks={tasks}
+      books={books}
+      timetable={timetable}
+    />
   );
 }
